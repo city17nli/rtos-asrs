@@ -1,3 +1,0 @@
-matplotlib
-numpy
-git+https://github.com/Kei18/pypibt.git  # pypibtをGitHubから直接インストール
