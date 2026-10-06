@@ -1,0 +1,18 @@
+def load_map(filepath):
+    """テキストファイルからマップを読み込む関数"""
+    obstacles = []
+    with open(filepath, 'r') as f:
+        lines = f.read().splitlines()
+        
+    height = len(lines)
+    width = len(lines[0])
+    
+    for y, line in enumerate(lines):
+        for x, char in enumerate(line):
+            if char == '@':
+                obstacles.append((x, y))
+                
+    return width, height, obstacles
+
+# 使い方 (main.py の設定部分をこれに置き換える)
+# width, height, obstacles = load_map("maps/layout_A.map")
