@@ -6,27 +6,28 @@ class Robot:
         self.id = robot_id
         self.pos = start_pos
         self.goal = start_pos
+        # 状態: IDLE(待機), TO_TASK(荷物へ移動中), TO_ENDPOINT(配送中)
         self.status = "IDLE"
 
 class WarehouseSimulator:
-    def __init__(self, width, height, obstacles):
+    def __init__(self, width, height, obstacles, endpoint):
         self.width = width
         self.height = height
         self.obstacles = set(obstacles)
+        self.endpoint = endpoint # ★追加：荷物を届ける場所
         self.robots = []
         self.task_queue = [] 
         self.history = []
         
-        # 統計・動的生成用の変数
         self.completed_tasks_count = 0
-        self.target_total_tasks = 50  # 目標クリア数
-        self.spawn_counter = 0        # タスク生成タイミングを測るカウンター
+        self.target_total_tasks = 50
+        self.spawn_counter = 0
 
-        # 障害物以外の安全なマスをあらかじめリストアップ
         self.valid_cells = []
         for y in range(height):
             for x in range(width):
-                if (x, y) not in obstacles:
+                # 障害物とエンドポイントにはタスクを出現させない
+                if (x, y) not in obstacles and (x, y) != endpoint:
                     self.valid_cells.append((x, y))
 
     def add_robot(self, robot):
@@ -36,9 +37,7 @@ class WarehouseSimulator:
         self.task_queue.append(goal_pos)
 
     def spawn_dynamic_task(self):
-        """一定条件を満たしたときに新しいタスクをランダム生成する"""
-        # すでに生成した総数（キュー内 ＋ クリア済み ＋ ロボットが持っているもの）が目標に達していなければ追加
-        active_or_queued = len(self.task_queue) + sum(1 for r in self.robots if r.status == "MOVING")
+        active_or_queued = len(self.task_queue) + sum(1 for r in self.robots if r.status in ["TO_TASK", "TO_ENDPOINT"])
         total_created = self.completed_tasks_count + active_or_queued
         
         if total_created < self.target_total_tasks:
@@ -62,7 +61,7 @@ class WarehouseSimulator:
             
             if closest_task:
                 robot.goal = closest_task
-                robot.status = "MOVING"
+                robot.status = "TO_TASK" # ★変更：まずは荷物に向かう
                 self.task_queue.remove(closest_task)
 
     def get_next_step(self, current, goal):
@@ -81,15 +80,20 @@ class WarehouseSimulator:
         return current
 
     def step(self):
-        # 1. ゴール到着判定（タスク完了カウントを進める）
+        # 1. 状態遷移（★ここが一番重要な改善点です！）
         for robot in self.robots:
-            if robot.status == "MOVING" and robot.pos == robot.goal:
+            if robot.status == "TO_TASK" and robot.pos == robot.goal:
+                # 荷物を回収した！次はエンドポイントへ目標を変更
+                robot.goal = self.endpoint
+                robot.status = "TO_ENDPOINT"
+            elif robot.status == "TO_ENDPOINT" and robot.pos == robot.goal:
+                # エンドポイントに到着した！ここで初めてタスク完了
                 robot.status = "IDLE"
                 self.completed_tasks_count += 1
 
-        # 2. 動的タスク生成の判定（例: 2ステップごとに1個新しいタスクをスポーン）
+        # 2. 動的タスク生成 (★10ステップに1回に修正)
         self.spawn_counter += 1
-        if self.spawn_counter >= 2:
+        if self.spawn_counter >= 10:
             self.spawn_dynamic_task()
             self.spawn_counter = 0
 
@@ -98,43 +102,3 @@ class WarehouseSimulator:
 
         # 4. 衝突回避
         next_positions = {}
-        reserved_cells = set()
-        sorted_robots = sorted(self.robots, key=lambda r: r.id) 
-
-        for robot in sorted_robots:
-            if robot.pos == robot.goal:
-                next_pos = robot.pos
-            else:
-                next_pos = self.get_next_step(robot.pos, robot.goal)
-            
-            if next_pos in reserved_cells:
-                next_pos = robot.pos
-
-            next_positions[robot.id] = next_pos
-            reserved_cells.add(next_pos)
-
-        # 5. 移動と記録
-        step_record = {}
-        for robot in self.robots:
-            robot.pos = next_positions[robot.id]
-            step_record[str(robot.id)] = robot.pos
-        
-        active_tasks = list(self.task_queue)
-        for robot in self.robots:
-            if robot.status == "MOVING" and robot.pos != robot.goal:
-                active_tasks.append(robot.goal)
-        step_record["tasks"] = active_tasks
-        
-        self.history.append(step_record)
-
-    def is_finished(self):
-        """目標のタスク数をすべてクリアし、全ロボットが待機状態になったか"""
-        all_idle = all(r.status == "IDLE" for r in self.robots)
-        return self.completed_tasks_count >= self.target_total_tasks and all_idle
-
-    def run(self, max_steps=1000):
-        """目標達成するか、最大ステップ数に達するまでループ"""
-        for _ in range(max_steps):
-            self.step()
-            if self.is_finished():
-                break
