@@ -12,8 +12,8 @@ def main():
     sim = WarehouseSimulator(width, height, obstacles)
     
     # ロボットを2台配置（わざと極端な場所にしてみるテスト）
-    sim.add_robot(Robot(robot_id=0, start_pos=(0, 0))) # 一番左上
-    sim.add_robot(Robot(robot_id=1, start_pos=(9, 9))) # 一番右下
+    sim.add_robot(Robot(robot_id=0, start_pos=(3, 3))) # 一番左上
+    sim.add_robot(Robot(robot_id=1, start_pos=(6, 7))) # 一番右下
 
     # タスクをバラバラに追加 (順番ではなく、距離の近さでロボットが選ぶようになります)
     sim.add_task((8, 1)) # ロボット1(8,8)よりロボット0(1,1)に近いが...？
