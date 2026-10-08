@@ -6,7 +6,6 @@ class Robot:
         self.id = robot_id
         self.pos = start_pos
         self.goal = start_pos
-        # 状態: IDLE(待機), TO_TASK(荷物へ移動中), TO_ENDPOINT(配送中)
         self.status = "IDLE"
 
 class WarehouseSimulator:
@@ -14,7 +13,7 @@ class WarehouseSimulator:
         self.width = width
         self.height = height
         self.obstacles = set(obstacles)
-        self.endpoint = endpoint # ★追加：荷物を届ける場所
+        self.endpoint = endpoint
         self.robots = []
         self.task_queue = [] 
         self.history = []
@@ -26,7 +25,6 @@ class WarehouseSimulator:
         self.valid_cells = []
         for y in range(height):
             for x in range(width):
-                # 障害物とエンドポイントにはタスクを出現させない
                 if (x, y) not in obstacles and (x, y) != endpoint:
                     self.valid_cells.append((x, y))
 
@@ -61,7 +59,7 @@ class WarehouseSimulator:
             
             if closest_task:
                 robot.goal = closest_task
-                robot.status = "TO_TASK" # ★変更：まずは荷物に向かう
+                robot.status = "TO_TASK"
                 self.task_queue.remove(closest_task)
 
     def get_next_step(self, current, goal):
@@ -80,18 +78,16 @@ class WarehouseSimulator:
         return current
 
     def step(self):
-        # 1. 状態遷移（★ここが一番重要な改善点です！）
+        # 1. 状態遷移
         for robot in self.robots:
             if robot.status == "TO_TASK" and robot.pos == robot.goal:
-                # 荷物を回収した！次はエンドポイントへ目標を変更
                 robot.goal = self.endpoint
                 robot.status = "TO_ENDPOINT"
             elif robot.status == "TO_ENDPOINT" and robot.pos == robot.goal:
-                # エンドポイントに到着した！ここで初めてタスク完了
                 robot.status = "IDLE"
                 self.completed_tasks_count += 1
 
-        # 2. 動的タスク生成 (★10ステップに1回に修正)
+        # 2. 動的タスク生成
         self.spawn_counter += 1
         if self.spawn_counter >= 10:
             self.spawn_dynamic_task()
@@ -102,3 +98,42 @@ class WarehouseSimulator:
 
         # 4. 衝突回避
         next_positions = {}
+        reserved_cells = set()
+        sorted_robots = sorted(self.robots, key=lambda r: r.id) 
+
+        for robot in sorted_robots:
+            if robot.pos == robot.goal:
+                next_pos = robot.pos
+            else:
+                next_pos = self.get_next_step(robot.pos, robot.goal)
+            
+            if next_pos in reserved_cells:
+                next_pos = robot.pos
+
+            next_positions[robot.id] = next_pos
+            reserved_cells.add(next_pos)
+
+        # 5. 移動と記録
+        step_record = {}
+        for robot in self.robots:
+            robot.pos = next_positions[robot.id]
+            step_record[str(robot.id)] = robot.pos
+        
+        active_tasks = list(self.task_queue)
+        for robot in self.robots:
+            if robot.status == "TO_TASK":
+                active_tasks.append(robot.goal)
+        step_record["tasks"] = active_tasks
+        
+        self.history.append(step_record)
+
+    def is_finished(self):
+        all_idle = all(r.status == "IDLE" for r in self.robots)
+        return self.completed_tasks_count >= self.target_total_tasks and all_idle
+
+    # ★さっきのエラーはここが消えていたためです！★
+    def run(self, max_steps=1000):
+        for _ in range(max_steps):
+            self.step()
+            if self.is_finished():
+                break
