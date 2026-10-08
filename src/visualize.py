@@ -6,22 +6,19 @@ import matplotlib.animation as animation
 import os
 
 def main():
-    # jsonファイルの存在確認
     if not os.path.exists("output/output.json"):
-        print("エラー: output/output.json が見つかりません。先に main.py を実行してください。")
+        print("エラー: output/output.json が見つかりません。")
         return
 
-    # 1. 履歴データの読み込み
     with open("output/output.json", "r") as f:
         history = json.load(f)
 
-    # 2. マップの描画設定 (main.pyと同じ設定を手動で合わせるか、設定ファイルから読む)
     width, height = 10, 10
     obstacles = [(5, 4), (5, 5), (5, 6)]
     
     grid = np.zeros((height, width))
     for (ox, oy) in obstacles:
-        grid[oy][ox] = 1  # 障害物は1 (描画の都合上、yとxを反転させて配列に格納)
+        grid[oy][ox] = 1
 
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.imshow(grid, cmap='binary')
@@ -29,23 +26,40 @@ def main():
     ax.set_yticks(np.arange(-0.5, height, 1), minor=True)
     ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5)
 
-    # 3. ロボットの初期プロット
+    # 3. ロボットとタスクの初期プロット
     colors = ['red', 'blue', 'green', 'orange']
     scatters = {}
-    for agent_id_str in history[0].keys():
-        agent_id = int(agent_id_str)
+    
+    # ロボットの点を準備
+    for key in history[0].keys():
+        if key == "tasks": continue
+        agent_id = int(key)
         c = colors[agent_id % len(colors)]
         scatters[agent_id] = ax.scatter([], [], c=c, s=150, label=f"Robot {agent_id}", zorder=5)
+
+    # タスク用の点を準備（大きな黄色の星マーク）
+    task_scatter = ax.scatter([], [], c='gold', marker='*', s=300, edgecolors='orange', label="Tasks", zorder=4)
 
     ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0))
 
     # 4. アニメーション更新処理
     def update(frame):
         step_data = history[frame]
+        
+        # タスクを描画（タスクが無くなったら空にする）
+        tasks = step_data.get("tasks", [])
+        if tasks:
+            task_scatter.set_offsets(tasks)
+        else:
+            task_scatter.set_offsets(np.empty((0, 2)))
+
+        # ロボットを描画
         for agent_id_str, pos in step_data.items():
-            # matplotlibのscatterは(x, y)の順
+            if agent_id_str == "tasks":
+                continue # tasksはロボットではないのでスキップ
             scatters[int(agent_id_str)].set_offsets([pos[0], pos[1]])
-        return list(scatters.values())
+            
+        return list(scatters.values()) + [task_scatter]
 
     # 5. GIFの保存
     ani = animation.FuncAnimation(fig, update, frames=len(history), interval=300, blit=True)
