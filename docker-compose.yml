@@ -1,6 +1,6 @@
 services:
   simulator:
     build: .
-    # ここが超重要！手元のPCの今のフォルダ(.)と、コンテナ内の(/app)を直結させる
     volumes:
-      - .:/app
+      # 全体の上書きをやめて、outputフォルダだけを手元のPCと直結する！
+      - ./output:/app/output
