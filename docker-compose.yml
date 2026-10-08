@@ -1,6 +1,4 @@
 services:
   simulator:
     build: .
-    volumes:
-      # 全体の上書きをやめて、outputフォルダだけを手元のPCと直結する！
-      - ./output:/app/output
+    # volumesの設定は消しました（エラーの元になるため）
