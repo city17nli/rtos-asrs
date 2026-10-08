@@ -64,7 +64,6 @@ class WarehouseSimulator:
                 self.task_queue.remove(closest_task)
 
     def get_next_step(self, current, goal, avoid_cells):
-        """【改良】幅優先探索(BFS)による、障害物・他ロボットの迂回ルート計算"""
         if current == goal:
             return current
         
@@ -76,21 +75,17 @@ class WarehouseSimulator:
             node = path[-1]
             
             if node == goal:
-                return path[1] # 最短ルートの「次の1歩」を返す
+                return path[1]
                 
             cx, cy = node
             for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
                 nx, ny = cx + dx, cy + dy
                 nxt = (nx, ny)
                 
-                # 画面外のチェック
                 if nx < 0 or nx >= self.width or ny < 0 or ny >= self.height:
                     continue
-                # 固定障害物のチェック
                 if nxt in self.obstacles:
                     continue
-                # 動的障害物（他のロボット）のチェック
-                # ※自分の「次の1歩目」が他のロボットと被る場合のみ避ける
                 if len(path) == 1 and nxt in avoid_cells:
                     continue
                     
@@ -98,7 +93,7 @@ class WarehouseSimulator:
                     visited.add(nxt)
                     queue.append(path + [nxt])
                     
-        return current # ゴールへの道が完全に塞がれている場合は待機
+        return current
 
     def step(self):
         # 1. 状態遷移
@@ -120,7 +115,7 @@ class WarehouseSimulator:
         # 3. 貪欲法によるタスク割当
         self.assign_tasks_greedily()
 
-        # 4. 衝突回避と迂回（ここも賢くしました）
+        # 4. 衝突回避と迂回
         next_positions = {}
         reserved_cells = set()
         sorted_robots = sorted(self.robots, key=lambda r: r.id) 
@@ -129,16 +124,13 @@ class WarehouseSimulator:
             if robot.pos == robot.goal:
                 next_pos = robot.pos
             else:
-                # 【重要】他のロボットの「次の位置」と「まだ動いていないロボットの現在地」を避けるべきセルとしてリストアップ
                 avoid_cells = set(reserved_cells)
                 for other in self.robots:
                     if other.id != robot.id and other.id not in next_positions:
                         avoid_cells.add(other.pos)
                 
-                # BFSで迂回ルートの1歩目を計算
                 next_pos = self.get_next_step(robot.pos, robot.goal, avoid_cells)
             
-            # 万が一の衝突防止（安全装置）
             if next_pos in reserved_cells:
                 next_pos = robot.pos
 
@@ -147,15 +139,23 @@ class WarehouseSimulator:
 
         # 5. 移動と記録
         step_record = {}
+        carrying_robots = [] # ★追加：荷物を持っているロボットのIDリスト
+        
         for robot in self.robots:
             robot.pos = next_positions[robot.id]
             step_record[str(robot.id)] = robot.pos
+            
+            # ★追加：もし荷物を持っている(TO_ENDPOINT)ならリストに追加
+            if robot.status == "TO_ENDPOINT":
+                carrying_robots.append(robot.id)
         
         active_tasks = list(self.task_queue)
         for robot in self.robots:
             if robot.status == "TO_TASK":
                 active_tasks.append(robot.goal)
+                
         step_record["tasks"] = active_tasks
+        step_record["carrying"] = carrying_robots # ★追加：JSONに記録
         
         self.history.append(step_record)
 
