@@ -1,10 +1,6 @@
 services:
   simulator:
     build: .
-    environment:
-      - DISPLAY=${DISPLAY}
+    # ここが超重要！手元のPCの今のフォルダ(.)と、コンテナ内の(/app)を直結させる
     volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      # 修正: 全体の同期をやめ、結果を出力するフォルダだけを同期する
-      - ./output:/app/output
-    network_mode: host
+      - .:/app

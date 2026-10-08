@@ -1,19 +1,13 @@
-FROM python:3.14.8-slim
+# 軽量なPython 3.11環境をベースにする
+FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y \
-    libgl1 \
-    libglib2.0-0 \
-    libx11-6 \
-    libxext6 \
-    && rm -rf /var/lib/apt/lists/*
-
+# コンテナ内の作業ディレクトリを /app に設定
 WORKDIR /app
 
-# 修正箇所：コピー元のパスを変更
-COPY requirements.txt ./
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# ライブラリのリストをコンテナにコピーしてインストール
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-
-CMD ["python", "src/main.py"]
+# コンテナが起動したときに自動で実行されるコマンド
+# (&& を使うことで、main.py が成功したら visualize.py を実行する)
+CMD python src/main.py && python src/visualize.py
