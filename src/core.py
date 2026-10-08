@@ -6,6 +6,7 @@ class Robot:
         self.id = robot_id
         self.pos = start_pos
         self.goal = start_pos
+        self.start_pos = start_pos  # ★追加：自分の最初の場所を「ホーム」として記憶！
         self.status = "IDLE"
 
 class WarehouseSimulator:
@@ -85,11 +86,12 @@ class WarehouseSimulator:
                 robot.status = "TO_ENDPOINT"
             elif robot.status == "TO_ENDPOINT" and robot.pos == robot.goal:
                 robot.status = "IDLE"
+                robot.goal = robot.start_pos # ★変更：緑マスで立ち止まらず、ホームへ帰り始める！
                 self.completed_tasks_count += 1
 
         # 2. 動的タスク生成
         self.spawn_counter += 1
-        if self.spawn_counter >= 10:
+        if self.spawn_counter >= 3: # ★変更：10ステップから3ステップに変更（タスクが頻繁に出現）
             self.spawn_dynamic_task()
             self.spawn_counter = 0
 
@@ -131,7 +133,6 @@ class WarehouseSimulator:
         all_idle = all(r.status == "IDLE" for r in self.robots)
         return self.completed_tasks_count >= self.target_total_tasks and all_idle
 
-    # ★さっきのエラーはここが消えていたためです！★
     def run(self, max_steps=1000):
         for _ in range(max_steps):
             self.step()
