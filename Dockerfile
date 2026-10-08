@@ -1,8 +1,8 @@
 FROM python:3.14.8-slim
 
-# GUIおよび画像処理（GIF生成等）に必要なシステムライブラリのインストール
+# パッケージ名を libgl1-mesa-glx から libgl1 に変更
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libx11-6 \
     libxext6 \
@@ -10,13 +10,10 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# output内にあるrequirements.txtをコピーしてインストール
 COPY output/requirements.txt ./
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# プロジェクト全体をコンテナにコピー
 COPY . .
 
-# 実行コマンド
 CMD ["python", "src/main.py"]
