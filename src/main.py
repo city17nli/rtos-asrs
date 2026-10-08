@@ -1,6 +1,7 @@
 # src/main.py
 import json
 import os
+import random  # ★ランダム機能を追加
 from core import Robot, WarehouseSimulator
 
 def main():
@@ -11,18 +12,26 @@ def main():
     obstacles = [(5, 4), (5, 5), (5, 6)]
     sim = WarehouseSimulator(width, height, obstacles)
     
-    # ロボットを2台配置（わざと極端な場所にしてみるテスト）
-    sim.add_robot(Robot(robot_id=0, start_pos=(3, 3))) # 一番左上
-    sim.add_robot(Robot(robot_id=1, start_pos=(6, 7))) # 一番右下
+    # ロボットを2台配置
+    sim.add_robot(Robot(robot_id=0, start_pos=(1, 1)))
+    sim.add_robot(Robot(robot_id=1, start_pos=(8, 8)))
 
-    # タスクをバラバラに追加 (順番ではなく、距離の近さでロボットが選ぶようになります)
-    sim.add_task((8, 1)) # ロボット1(8,8)よりロボット0(1,1)に近いが...？
-    sim.add_task((2, 8)) 
-    sim.add_task((8, 5))
-    sim.add_task((1, 5))
+    # ★追加：障害物以外の「安全なマス」のリストを作成
+    valid_cells = []
+    for y in range(height):
+        for x in range(width):
+            if (x, y) not in obstacles:
+                valid_cells.append((x, y))
 
-    print("貪欲法ベースラインによるシミュレーションを開始...")
-    sim.run(steps=30) # 少し長めに動かす
+    # ★追加：タスクをランダムに10個生成
+    num_tasks = 10
+    for _ in range(num_tasks):
+        # 安全なマスの中からランダムに1つ選んでタスクに追加
+        random_task = random.choice(valid_cells)
+        sim.add_task(random_task)
+
+    print(f"ランダムタスクを{num_tasks}個生成しました。シミュレーションを開始...")
+    sim.run(steps=50) # タスクを増やしたので、ステップ数(時間)も少し長めに回す
 
     with open("output/output.json", "w") as f:
         json.dump(sim.history, f, indent=2)
