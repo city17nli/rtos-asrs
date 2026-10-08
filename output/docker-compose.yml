@@ -1,0 +1,12 @@
+services:
+  simulator:
+    build: .
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # カレントディレクトリ(.)をコンテナ内の /app に同期
+      # これにより、コンテナ内で output/ 以下に出力されたGIFやJSONが、
+      # 瞬時にホストPC（あなたのPC）のフォルダにも反映されます。
+      - .:/app
+    network_mode: host
