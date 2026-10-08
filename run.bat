@@ -1,3 +1,4 @@
+chcp 65001 > nul
 @echo off
 echo シミュレーションを開始します...
 docker compose up --build
