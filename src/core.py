@@ -22,7 +22,7 @@ class WarehouseSimulator:
         self.history = []
         
         self.completed_tasks_count = 0
-        self.target_total_tasks = 200 
+        self.target_total_tasks = 100 # ★変更：テスト用に100個へ増加！
         self.spawn_counter = 0
 
         self.shelf_cells = list(self.obstacles)
@@ -140,7 +140,7 @@ class WarehouseSimulator:
                 robot.action_timer = 2 
 
         self.spawn_counter += 1
-        if self.spawn_counter >= 2: 
+        if self.spawn_counter >= 1: # ★変更：毎ステップ（1歩ごと）タスクが超高頻度で湧く
             self.spawn_dynamic_task()
             self.spawn_counter = 0
 
@@ -187,7 +187,6 @@ class WarehouseSimulator:
         self.history.append(step_record)
 
     def is_finished(self):
-        # ★変更：全タスクが完了し、かつ【全員が初期位置に駐車して完全に停止】するまで終わらない
         all_parked = all(r.status == "IDLE" and r.pos == r.start_pos for r in self.robots)
         return self.completed_tasks_count >= self.target_total_tasks and all_parked
 
