@@ -22,7 +22,7 @@ class WarehouseSimulator:
         self.history = []
         
         self.completed_tasks_count = 0
-        self.target_total_tasks = 100 # ★変更：テスト用に100個へ増加！
+        self.target_total_tasks = 50 # ★変更：テスト用に50個！
         self.spawn_counter = 0
 
         self.shelf_cells = list(self.obstacles)

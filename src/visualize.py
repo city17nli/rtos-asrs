@@ -1,4 +1,3 @@
-# src/visualize.py
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,7 +28,10 @@ def main():
     with open("output/output.json", "r") as f:
         history = json.load(f)
 
-    # ★間引き（history[::4]）を削除しました。これで全ステップが1歩ずつ描画されます！
+    max_frames = 800
+    if len(history) > max_frames:
+        print(f"\n※ステップ数が {len(history)} と膨大なため、最初の {max_frames} ステップのみを切り取ります...")
+        history = history[:max_frames]
 
     width, height, obstacles, endpoints = load_map("maps/layout_A.map")
     
@@ -47,6 +49,7 @@ def main():
     ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5)
     ax.tick_params(axis='both', which='major', labelsize=8)
 
+    # 障害物やエンドポイントの散布図（固定部分）
     for ep in endpoints:
         ax.scatter(ep[0], ep[1], c='lime', marker='s', s=400, edgecolors='black', zorder=3)
 
@@ -55,6 +58,7 @@ def main():
               '#008080', '#e6beff']
     scatters = {}
     
+    # 最初のフレームからロボットを取得してプロットオブジェクトを作成
     for key in history[0].keys():
         if key in ["tasks", "carrying"]: continue
         agent_id = int(key)
@@ -66,41 +70,55 @@ def main():
 
     ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1.0), fontsize='small')
 
+    # ★ 解決策：補間数を「1」（補間なし）に戻す
+    SUB_FRAMES = 1  
+    total_frames = len(history)
+
     def update(frame):
         step_data = history[frame]
         
+        # タスク位置の更新
         tasks = step_data.get("tasks", [])
         if tasks:
             task_scatter.set_offsets(tasks)
         else:
             task_scatter.set_offsets(np.empty((0, 2)))
 
-        for agent_id_str, pos in step_data.items():
+        # ロボット位置の更新（1対1ステップのままで更新）
+        for agent_id_str in step_data.keys():
             if agent_id_str in ["tasks", "carrying"]:
                 continue
+            pos = step_data[agent_id_str]
             scatters[int(agent_id_str)].set_offsets([pos[0], pos[1]])
             
+        # 荷物位置の更新
         carrying_ids = step_data.get("carrying", [])
         cargo_positions = []
         for cid in carrying_ids:
-            if str(cid) in step_data:
-                cargo_positions.append(step_data[str(cid)])
+            cid_str = str(cid)
+            if cid_str in step_data:
+                cargo_positions.append(step_data[cid_str])
         
         if cargo_positions:
             cargo_scatter.set_offsets(cargo_positions)
         else:
             cargo_scatter.set_offsets(np.empty((0, 2)))
             
+        # blit=True を機能させるため、今回変更があった Artist だけを返す（＝描画負荷を最小化してガタつきをなくす）
         return list(scatters.values()) + [task_scatter, cargo_scatter]
 
-    print(f"\n全 {len(history)} ステップのアニメーション(GIF)をフルレンダリング中です。")
-    print("PCの性能によっては 1〜3分 ほどかかります。少々お待ちください...")
-    
-    # ★変更：intervalを30（超高速・約30fps）に変更し、滑らかかつスピーディーに再生
-    ani = animation.FuncAnimation(fig, update, frames=len(history), interval=30, blit=True)
+    print("アニメーションをレンダリング中です（数十秒で終わります）...")
     os.makedirs("output", exist_ok=True)
-    ani.save("output/animation.gif", writer='pillow')
-    print("アニメーション生成完了: output/animation.gif を保存しました。")
+    
+    # ★「描画スピードより滑らかさ（ガタつきのなさ）を重視」：
+    # 描画更新処理を邪魔しないよう、1コマあたりの間隔（ミリ秒）を微調整
+    # 1ステップ＝1コマの場合、早すぎるとカクついて見え、遅すぎるとモッサリするため「80ms」前後が最良の滑らかさに繋がります。
+    ani = animation.FuncAnimation(fig, update, frames=total_frames, interval=80, blit=True)
+    
+    print("GIFとして保存しています...")
+    # 保存時の FPS も 1000/interval に合わせてなめらかにループするように最適化
+    ani.save("output/simulation_smooth_1x.gif", writer='pillow', fps=12)
+    print("完了しました！ output/simulation_smooth_1x.gif を確認してください。")
 
 if __name__ == "__main__":
     main()
