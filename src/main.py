@@ -1,6 +1,7 @@
 # src/main.py
 import json
 import os
+import random  # ★追加：ランダム機能を使う
 from core import Robot, WarehouseSimulator
 
 def load_map(filepath):
@@ -28,14 +29,12 @@ def main():
     
     sim = WarehouseSimulator(width, height, obstacles, endpoints)
     
-    # ★変更：ロボットの数を8台に減らす
     for i in range(8):
         sim.add_robot(Robot(robot_id=i, start_pos=(i + 2, 0)))
 
-    # 初期タスク
-    sim.add_task((8, 1))
-    sim.add_task((2, 8))
-    sim.add_task((14, 5))
+    # ★変更：初期タスクを「障害物やエンドポイント以外の安全なマス」からランダムに3つ配置
+    for _ in range(3):
+        sim.add_task(random.choice(sim.valid_cells))
 
     print("大規模シミュレーションを開始（全100タスククリアまで）...")
     sim.run(max_steps=5000) 
