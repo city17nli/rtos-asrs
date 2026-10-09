@@ -10,23 +10,23 @@ class Robot:
         self.status = "IDLE"
 
 class WarehouseSimulator:
-    def __init__(self, width, height, obstacles, endpoint):
+    def __init__(self, width, height, obstacles, endpoints):
         self.width = width
         self.height = height
         self.obstacles = set(obstacles)
-        self.endpoint = endpoint
+        self.endpoints = endpoints # ★リスト(複数)に変更
         self.robots = []
         self.task_queue = [] 
         self.history = []
         
         self.completed_tasks_count = 0
-        self.target_total_tasks = 50
+        self.target_total_tasks = 100 # ★規模が大きくなったので100個に増量！
         self.spawn_counter = 0
 
         self.valid_cells = []
         for y in range(height):
             for x in range(width):
-                if (x, y) not in obstacles and (x, y) != endpoint:
+                if (x, y) not in obstacles and (x, y) not in endpoints:
                     self.valid_cells.append((x, y))
 
     def add_robot(self, robot):
@@ -96,26 +96,32 @@ class WarehouseSimulator:
         return current
 
     def step(self):
-        # 1. 状態遷移
         for robot in self.robots:
+            # ★変更：荷物を拾ったら「一番近い配送口(エンドポイント)」を探して向かう
             if robot.status == "TO_TASK" and robot.pos == robot.goal:
-                robot.goal = self.endpoint
+                best_ep = None
+                min_ep_dist = float('inf')
+                for ep in self.endpoints:
+                    dist = abs(robot.pos[0] - ep[0]) + abs(robot.pos[1] - ep[1])
+                    if dist < min_ep_dist:
+                        min_ep_dist = dist
+                        best_ep = ep
+                
+                robot.goal = best_ep
                 robot.status = "TO_ENDPOINT"
+                
             elif robot.status == "TO_ENDPOINT" and robot.pos == robot.goal:
                 robot.status = "IDLE"
                 robot.goal = robot.start_pos 
                 self.completed_tasks_count += 1
 
-        # 2. 動的タスク生成
         self.spawn_counter += 1
         if self.spawn_counter >= 3:
             self.spawn_dynamic_task()
             self.spawn_counter = 0
 
-        # 3. 貪欲法によるタスク割当
         self.assign_tasks_greedily()
 
-        # 4. 衝突回避と迂回
         next_positions = {}
         reserved_cells = set()
         sorted_robots = sorted(self.robots, key=lambda r: r.id) 
@@ -137,15 +143,12 @@ class WarehouseSimulator:
             next_positions[robot.id] = next_pos
             reserved_cells.add(next_pos)
 
-        # 5. 移動と記録
         step_record = {}
-        carrying_robots = [] # ★追加：荷物を持っているロボットのIDリスト
+        carrying_robots = [] 
         
         for robot in self.robots:
             robot.pos = next_positions[robot.id]
             step_record[str(robot.id)] = robot.pos
-            
-            # ★追加：もし荷物を持っている(TO_ENDPOINT)ならリストに追加
             if robot.status == "TO_ENDPOINT":
                 carrying_robots.append(robot.id)
         
@@ -155,7 +158,7 @@ class WarehouseSimulator:
                 active_tasks.append(robot.goal)
                 
         step_record["tasks"] = active_tasks
-        step_record["carrying"] = carrying_robots # ★追加：JSONに記録
+        step_record["carrying"] = carrying_robots 
         
         self.history.append(step_record)
 
@@ -169,5 +172,5 @@ class WarehouseSimulator:
             self.step()
             step_count += 1
             if self.is_finished():
-                print(f"★ すべてのタスク(50個)が完了しました！ (経過ステップ: {step_count})")
+                print(f"★ すべてのタスク({self.target_total_tasks}個)が完了しました！ (経過ステップ: {step_count})")
                 break
