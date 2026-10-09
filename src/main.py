@@ -3,25 +3,34 @@ import json
 import os
 from core import Robot, WarehouseSimulator
 
+def load_map(filepath):
+    """layout.map を読み込んで設定を返す関数"""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        lines = [line.strip() for line in f if line.strip()]
+    
+    height = len(lines)
+    width = len(lines[0])
+    obstacles = []
+    endpoints = []
+    
+    for y, line in enumerate(lines):
+        for x, char in enumerate(line):
+            if char == '#':
+                obstacles.append((x, y))
+            elif char == 'E':
+                endpoints.append((x, y))
+                
+    return width, height, obstacles, endpoints
+
 def main():
     os.makedirs("output", exist_ok=True)
 
-    # ★マップを 19(幅) x 15(高さ) に拡大
-    width, height = 19, 15
-    
-    # ★自動倉庫らしい「棚(ラック)」を生成
-    obstacles = []
-    # x=2,3 / x=7,8 / x=12,13 に縦長の棚を配置（通路がx=4,5,6 / 9,10,11 / 14,15,16 にできる）
-    for x in [2, 3, 7, 8, 12, 13]:
-        for y in range(2, 12): # y=2から11まで縦に並べる
-            obstacles.append((x, y))
-            
-    # ★エンドポイントを3か所に増設（通路の真下になるように配置）
-    endpoints = [(4, 14), (10, 14), (15, 14)]
+    # ★マップファイルから設定を読み込む！
+    width, height, obstacles, endpoints = load_map("layout.map")
     
     sim = WarehouseSimulator(width, height, obstacles, endpoints)
     
-    # ★ロボットを12台に増員し、マップ上部に横並びで配置
+    # ロボットを12台配置
     for i in range(12):
         sim.add_robot(Robot(robot_id=i, start_pos=(i + 2, 0)))
 
