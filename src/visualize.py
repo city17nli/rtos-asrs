@@ -29,10 +29,7 @@ def main():
     with open("output/output.json", "r") as f:
         history = json.load(f)
 
-    # ★変更：少し滑らかにするために5倍速から4倍速に
-    if len(history) > 1000:
-        print(f"\n※ステップ数が {len(history)} と非常に多いため、4倍速（間引き）でGIFを生成します...")
-        history = history[::4]
+    # ★間引き（history[::4]）を削除しました。これで全ステップが1歩ずつ描画されます！
 
     width, height, obstacles, endpoints = load_map("maps/layout_A.map")
     
@@ -96,9 +93,11 @@ def main():
             
         return list(scatters.values()) + [task_scatter, cargo_scatter]
 
-    print("アニメーション(GIF)をレンダリング中です。数十秒お待ちください...")
-    # ★変更：intervalを100から200に増やし、再生スピードをゆっくりにする
-    ani = animation.FuncAnimation(fig, update, frames=len(history), interval=200, blit=True)
+    print(f"\n全 {len(history)} ステップのアニメーション(GIF)をフルレンダリング中です。")
+    print("PCの性能によっては 1〜3分 ほどかかります。少々お待ちください...")
+    
+    # ★変更：intervalを30（超高速・約30fps）に変更し、滑らかかつスピーディーに再生
+    ani = animation.FuncAnimation(fig, update, frames=len(history), interval=30, blit=True)
     os.makedirs("output", exist_ok=True)
     ani.save("output/animation.gif", writer='pillow')
     print("アニメーション生成完了: output/animation.gif を保存しました。")
