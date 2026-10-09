@@ -8,8 +8,8 @@ class Robot:
         self.goal = start_pos
         self.start_pos = start_pos
         self.status = "IDLE"
-        self.action_timer = 0       # ★追加：作業にかかるステップ数をカウント
-        self.target_task = None     # ★追加：向かっている棚（タスク）の座標を記憶
+        self.action_timer = 0       
+        self.target_task = None     
 
 class WarehouseSimulator:
     def __init__(self, width, height, obstacles, endpoints):
@@ -25,7 +25,6 @@ class WarehouseSimulator:
         self.target_total_tasks = 100
         self.spawn_counter = 0
 
-        # ★変更：タスクは「棚の上」にしか発生しないようにリスト化
         self.shelf_cells = list(self.obstacles)
 
     def add_robot(self, robot):
@@ -39,7 +38,6 @@ class WarehouseSimulator:
         total_created = self.completed_tasks_count + active_or_queued
         
         if total_created < self.target_total_tasks:
-            # ★変更：棚の上からランダムにタスクを生成
             new_task = random.choice(self.shelf_cells)
             self.task_queue.append(new_task)
 
@@ -55,15 +53,18 @@ class WarehouseSimulator:
             
             for task in self.task_queue:
                 tx, ty = task
-                # ★追加：棚(タスク)の「上下左右の通路」をリストアップ
+                # ★変更：上下左右ではなく、「左(-1, 0)」と「右(1, 0)」の通路のみをアクセス可能とする！
                 adj_cells = []
-                for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                for dx, dy in [(-1, 0), (1, 0)]:
                     nx, ny = tx + dx, ty + dy
                     if 0 <= nx < self.width and 0 <= ny < self.height:
                         if (nx, ny) not in self.obstacles: # 棚じゃないマス（通路）
                             adj_cells.append((nx, ny))
                 
-                # 一番近い通路マスを探す
+                # 横からアクセスできないタスク（万が一あった場合）はスキップ
+                if not adj_cells:
+                    continue
+
                 for adj in adj_cells:
                     dist = abs(robot.pos[0] - adj[0]) + abs(robot.pos[1] - adj[1])
                     if dist < min_dist:
@@ -72,8 +73,8 @@ class WarehouseSimulator:
                         best_adj_cell = adj
             
             if closest_task:
-                robot.target_task = closest_task # タスク自体の位置
-                robot.goal = best_adj_cell       # 実際に移動する通路の位置
+                robot.target_task = closest_task 
+                robot.goal = best_adj_cell       
                 robot.status = "TO_TASK"
                 self.task_queue.remove(closest_task)
 
@@ -110,12 +111,10 @@ class WarehouseSimulator:
         return current
 
     def step(self):
-        # 1. 状態遷移とタイマー処理（★ここが一番進化しました！）
         for robot in self.robots:
             if robot.status == "PICKING_UP":
                 robot.action_timer -= 1
                 if robot.action_timer <= 0:
-                    # 荷物を積み終わった！配送口へ向かう
                     best_ep = None
                     min_ep_dist = float('inf')
                     for ep in self.endpoints:
@@ -130,37 +129,30 @@ class WarehouseSimulator:
             elif robot.status == "DROPPING_OFF":
                 robot.action_timer -= 1
                 if robot.action_timer <= 0:
-                    # 荷物を下ろし終わった！
                     robot.status = "IDLE"
                     robot.goal = robot.start_pos 
                     self.completed_tasks_count += 1
                     
             elif robot.status == "TO_TASK" and robot.pos == robot.goal:
-                # 棚の横に到着！積込作業開始
                 robot.status = "PICKING_UP"
-                robot.action_timer = 2 # 2ステップ待機
+                robot.action_timer = 2 
                 
             elif robot.status == "TO_ENDPOINT" and robot.pos == robot.goal:
-                # 配送口に到着！荷下ろし作業開始
                 robot.status = "DROPPING_OFF"
-                robot.action_timer = 2 # 2ステップ待機
+                robot.action_timer = 2 
 
-        # 2. 動的タスク生成
         self.spawn_counter += 1
         if self.spawn_counter >= 3:
             self.spawn_dynamic_task()
             self.spawn_counter = 0
 
-        # 3. 貪欲法によるタスク割当
         self.assign_tasks_greedily()
 
-        # 4. 衝突回避と迂回
         next_positions = {}
         reserved_cells = set()
         sorted_robots = sorted(self.robots, key=lambda r: r.id) 
 
         for robot in sorted_robots:
-            # ★作業中のロボットは動けない（道を塞ぐ障害物になる）
             if robot.status in ["PICKING_UP", "DROPPING_OFF"] or robot.pos == robot.goal:
                 next_pos = robot.pos
             else:
@@ -177,20 +169,17 @@ class WarehouseSimulator:
             next_positions[robot.id] = next_pos
             reserved_cells.add(next_pos)
 
-        # 5. 移動と記録
         step_record = {}
         carrying_robots = [] 
         
         for robot in self.robots:
             robot.pos = next_positions[robot.id]
             step_record[str(robot.id)] = robot.pos
-            # 配送口へ向かっている間、または下ろしている最中は星マークをつける
             if robot.status in ["TO_ENDPOINT", "DROPPING_OFF"]:
                 carrying_robots.append(robot.id)
         
         active_tasks = list(self.task_queue)
         for robot in self.robots:
-            # 取りに向かっている最中、または積み込んでいる最中は棚の上の星を残す
             if robot.status in ["TO_TASK", "PICKING_UP"] and robot.target_task:
                 active_tasks.append(robot.target_task)
                 
