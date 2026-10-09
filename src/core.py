@@ -22,7 +22,7 @@ class WarehouseSimulator:
         self.history = []
         
         self.completed_tasks_count = 0
-        self.target_total_tasks = 200 # ★変更：100個から200個へ倍増！
+        self.target_total_tasks = 200 
         self.spawn_counter = 0
 
         self.shelf_cells = list(self.obstacles)
@@ -140,7 +140,7 @@ class WarehouseSimulator:
                 robot.action_timer = 2 
 
         self.spawn_counter += 1
-        if self.spawn_counter >= 2: # ★変更：3ステップから2ステップに短縮（湧くのが早くなる）
+        if self.spawn_counter >= 2: 
             self.spawn_dynamic_task()
             self.spawn_counter = 0
 
@@ -187,14 +187,15 @@ class WarehouseSimulator:
         self.history.append(step_record)
 
     def is_finished(self):
-        all_idle = all(r.status == "IDLE" for r in self.robots)
-        return self.completed_tasks_count >= self.target_total_tasks and all_idle
+        # ★変更：全タスクが完了し、かつ【全員が初期位置に駐車して完全に停止】するまで終わらない
+        all_parked = all(r.status == "IDLE" and r.pos == r.start_pos for r in self.robots)
+        return self.completed_tasks_count >= self.target_total_tasks and all_parked
 
-    def run(self, max_steps=8000): # ★変更：上限ステップも余裕を持って8000に増加
+    def run(self, max_steps=8000): 
         step_count = 0
         for _ in range(max_steps):
             self.step()
             step_count += 1
             if self.is_finished():
-                print(f"★ すべてのタスク({self.target_total_tasks}個)が完了しました！ (経過ステップ: {step_count})")
+                print(f"★ すべてのタスク({self.target_total_tasks}個)が完了し、全機帰還しました！ (経過ステップ: {step_count})")
                 break
