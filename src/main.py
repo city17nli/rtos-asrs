@@ -29,15 +29,15 @@ def main():
     
     sim = WarehouseSimulator(width, height, obstacles, endpoints)
     
-    for i in range(8):
+    # ★変更：ロボットの数を一気に15台へ！
+    for i in range(15):
         sim.add_robot(Robot(robot_id=i, start_pos=(i + 2, 0)))
 
-    # ★変更：初期タスクを「棚(shelf_cells)」の上に配置する！
     for _ in range(3):
         sim.add_task(random.choice(sim.shelf_cells))
 
-    print("大規模シミュレーションを開始（全100タスククリアまで）...")
-    sim.run(max_steps=5000) 
+    print("超・大規模シミュレーションを開始（全200タスククリアまで）...")
+    sim.run(max_steps=8000) 
 
     with open("output/output.json", "w") as f:
         json.dump(sim.history, f, indent=2)

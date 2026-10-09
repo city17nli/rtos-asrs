@@ -22,7 +22,7 @@ class WarehouseSimulator:
         self.history = []
         
         self.completed_tasks_count = 0
-        self.target_total_tasks = 100
+        self.target_total_tasks = 200 # ★変更：100個から200個へ倍増！
         self.spawn_counter = 0
 
         self.shelf_cells = list(self.obstacles)
@@ -53,15 +53,13 @@ class WarehouseSimulator:
             
             for task in self.task_queue:
                 tx, ty = task
-                # ★変更：上下左右ではなく、「左(-1, 0)」と「右(1, 0)」の通路のみをアクセス可能とする！
                 adj_cells = []
                 for dx, dy in [(-1, 0), (1, 0)]:
                     nx, ny = tx + dx, ty + dy
                     if 0 <= nx < self.width and 0 <= ny < self.height:
-                        if (nx, ny) not in self.obstacles: # 棚じゃないマス（通路）
+                        if (nx, ny) not in self.obstacles:
                             adj_cells.append((nx, ny))
                 
-                # 横からアクセスできないタスク（万が一あった場合）はスキップ
                 if not adj_cells:
                     continue
 
@@ -142,7 +140,7 @@ class WarehouseSimulator:
                 robot.action_timer = 2 
 
         self.spawn_counter += 1
-        if self.spawn_counter >= 3:
+        if self.spawn_counter >= 2: # ★変更：3ステップから2ステップに短縮（湧くのが早くなる）
             self.spawn_dynamic_task()
             self.spawn_counter = 0
 
@@ -192,7 +190,7 @@ class WarehouseSimulator:
         all_idle = all(r.status == "IDLE" for r in self.robots)
         return self.completed_tasks_count >= self.target_total_tasks and all_idle
 
-    def run(self, max_steps=5000):
+    def run(self, max_steps=8000): # ★変更：上限ステップも余裕を持って8000に増加
         step_count = 0
         for _ in range(max_steps):
             self.step()
