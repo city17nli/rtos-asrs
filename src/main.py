@@ -4,7 +4,6 @@ import os
 from core import Robot, WarehouseSimulator
 
 def load_map(filepath):
-    """layout.map を読み込んで設定を返す関数"""
     with open(filepath, 'r', encoding='utf-8') as f:
         lines = [line.strip() for line in f if line.strip()]
     
@@ -25,13 +24,12 @@ def load_map(filepath):
 def main():
     os.makedirs("output", exist_ok=True)
 
-    # ★マップファイルから設定を読み込む！
     width, height, obstacles, endpoints = load_map("maps/layout_A.map")
     
     sim = WarehouseSimulator(width, height, obstacles, endpoints)
     
-    # ロボットを12台配置
-    for i in range(12):
+    # ★変更：ロボットの数を8台に減らす
+    for i in range(8):
         sim.add_robot(Robot(robot_id=i, start_pos=(i + 2, 0)))
 
     # 初期タスク

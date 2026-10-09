@@ -29,7 +29,6 @@ def main():
     with open("output/output.json", "r") as f:
         history = json.load(f)
 
-    # ★追加：履歴が長すぎる場合、GIF生成を軽くするために5ステップごとに間引き（5倍速）
     if len(history) > 1000:
         print(f"\n※ステップ数が {len(history)} と非常に多いため、5倍速（間引き）でGIFを生成します...")
         history = history[::5]
@@ -42,9 +41,16 @@ def main():
 
     fig, ax = plt.subplots(figsize=(10, 8))
     ax.imshow(grid, cmap='binary')
+    
+    # ★修正：セルの中心に必ず整数で座標を表示させる
+    ax.set_xticks(np.arange(width))
+    ax.set_yticks(np.arange(height))
+    # ★修正：セルの境界線（-0.5ズレた位置）に補助線（グリッド）を引く
     ax.set_xticks(np.arange(-0.5, width, 1), minor=True)
     ax.set_yticks(np.arange(-0.5, height, 1), minor=True)
     ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5)
+    # 文字が大きすぎると重なるので少し小さくする
+    ax.tick_params(axis='both', which='major', labelsize=8)
 
     for ep in endpoints:
         ax.scatter(ep[0], ep[1], c='lime', marker='s', s=400, edgecolors='black', zorder=3)
@@ -93,7 +99,6 @@ def main():
         return list(scatters.values()) + [task_scatter, cargo_scatter]
 
     print("アニメーション(GIF)をレンダリング中です。数十秒お待ちください...")
-    # 間引きした分、パラパラ感を抑えるためにintervalを少し短く(100ms)設定
     ani = animation.FuncAnimation(fig, update, frames=len(history), interval=100, blit=True)
     os.makedirs("output", exist_ok=True)
     ani.save("output/animation.gif", writer='pillow')
