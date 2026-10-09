@@ -6,7 +6,6 @@ import matplotlib.animation as animation
 import os
 
 def load_map(filepath):
-    """main.pyと同じマップ読み込み処理"""
     with open(filepath, 'r', encoding='utf-8') as f:
         lines = [line.strip() for line in f if line.strip()]
     
@@ -30,7 +29,11 @@ def main():
     with open("output/output.json", "r") as f:
         history = json.load(f)
 
-    # ★マップファイルから読み込む！
+    # ★追加：履歴が長すぎる場合、GIF生成を軽くするために5ステップごとに間引き（5倍速）
+    if len(history) > 1000:
+        print(f"\n※ステップ数が {len(history)} と非常に多いため、5倍速（間引き）でGIFを生成します...")
+        history = history[::5]
+
     width, height, obstacles, endpoints = load_map("maps/layout_A.map")
     
     grid = np.zeros((height, width))
@@ -89,7 +92,9 @@ def main():
             
         return list(scatters.values()) + [task_scatter, cargo_scatter]
 
-    ani = animation.FuncAnimation(fig, update, frames=len(history), interval=300, blit=True)
+    print("アニメーション(GIF)をレンダリング中です。数十秒お待ちください...")
+    # 間引きした分、パラパラ感を抑えるためにintervalを少し短く(100ms)設定
+    ani = animation.FuncAnimation(fig, update, frames=len(history), interval=100, blit=True)
     os.makedirs("output", exist_ok=True)
     ani.save("output/animation.gif", writer='pillow')
     print("アニメーション生成完了: output/animation.gif を保存しました。")
