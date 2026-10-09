@@ -31,7 +31,7 @@ def main():
         history = json.load(f)
 
     # ★マップファイルから読み込む！
-    width, height, obstacles, endpoints = load_map("layout.map")
+    width, height, obstacles, endpoints = load_map("maps/layout_A.map")
     
     grid = np.zeros((height, width))
     for (ox, oy) in obstacles:
