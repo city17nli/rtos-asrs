@@ -26,7 +26,7 @@ def main():
     os.makedirs("output", exist_ok=True)
 
     # ★マップファイルから設定を読み込む！
-    width, height, obstacles, endpoints = load_map("layout.map")
+    width, height, obstacles, endpoints = load_map("maps/layout_A.map")
     
     sim = WarehouseSimulator(width, height, obstacles, endpoints)
     
